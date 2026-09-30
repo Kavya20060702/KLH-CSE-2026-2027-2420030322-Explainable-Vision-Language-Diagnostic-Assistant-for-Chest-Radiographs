@@ -1,4 +1,4 @@
-# An Intelligent Software Engineering Assistant for Automated Project Planning and Documentation
+# Explainable-Vision-Language-Diagnostic-Assistant-for-Chest-Radiographs
 
 ## Team Members
 - P. Kavya Sai - 2420030322
