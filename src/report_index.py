@@ -20,6 +20,8 @@ import pickle
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 
+from paths import REPORT_INDEX_PATH
+
 
 def load_openi_reports(reports_csv, projections_csv):
     reports = pd.read_csv(reports_csv)
@@ -55,7 +57,7 @@ def load_openi_reports(reports_csv, projections_csv):
     return merged
 
 
-def build_index(reports_csv, projections_csv, out_path="models/report_index.pkl"):
+def build_index(reports_csv, projections_csv, out_path=REPORT_INDEX_PATH):
     df = load_openi_reports(reports_csv, projections_csv)
     vectorizer = TfidfVectorizer(max_features=5000, stop_words="english")
     tfidf_matrix = vectorizer.fit_transform(df["text"])
@@ -73,6 +75,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--reports", default="data/openi/indiana_reports.csv")
     parser.add_argument("--projections", default="data/openi/indiana_projections.csv")
-    parser.add_argument("--out", default="models/report_index.pkl")
+    parser.add_argument("--out", default=REPORT_INDEX_PATH)
     args = parser.parse_args()
     build_index(args.reports, args.projections, args.out)

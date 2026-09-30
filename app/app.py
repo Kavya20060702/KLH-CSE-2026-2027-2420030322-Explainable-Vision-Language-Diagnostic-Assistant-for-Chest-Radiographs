@@ -12,6 +12,7 @@ from PIL import Image
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 from inference import run_pipeline  # noqa: E402
+from paths import CHECKPOINT_PATH, OUTPUTS_DIR  # noqa: E402
 
 st.set_page_config(page_title="Chest X-ray Diagnostic Assistant", layout="wide")
 st.title("Explainable Chest X-ray Diagnostic Assistant")
@@ -22,7 +23,7 @@ st.caption(
 
 uploaded = st.file_uploader("Upload a chest X-ray (PNG/JPG)", type=["png", "jpg", "jpeg"])
 
-checkpoint_path = "models/chest_classifier.pt"
+checkpoint_path = CHECKPOINT_PATH
 
 if uploaded is not None:
     if not os.path.exists(checkpoint_path):
@@ -31,20 +32,23 @@ if uploaded is not None:
             f"first (see README)."
         )
     else:
-        temp_path = "outputs/_uploaded_temp.png"
-        os.makedirs("outputs", exist_ok=True)
+        temp_path = os.path.join(OUTPUTS_DIR, "_uploaded_temp.png")
+        os.makedirs(OUTPUTS_DIR, exist_ok=True)
         Image.open(uploaded).convert("L").save(temp_path)
 
         with st.spinner("Analyzing..."):
             result = run_pipeline(temp_path, checkpoint=checkpoint_path)
 
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         with col1:
             st.subheader("Original")
             st.image(Image.open(temp_path), use_container_width=True)
         with col2:
-            st.subheader("Highlighted region of concern")
+            st.subheader("Heatmap (Grad-CAM)")
             st.image(result["overlay_image"], use_container_width=True)
+        with col3:
+            st.subheader("Marked region")
+            st.image(result["contour_image"], use_container_width=True)
 
         tier = result["triage"]["tier"]
         tier_color = {"Routine": "green", "Soon": "blue", "Urgent": "orange", "Immediate": "red"}

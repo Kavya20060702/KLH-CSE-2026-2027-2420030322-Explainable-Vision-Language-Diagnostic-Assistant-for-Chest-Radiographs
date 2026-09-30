@@ -16,21 +16,26 @@ from torch.utils.data import DataLoader
 
 from dataset import ChestXrayDataset, eval_transform
 from model import build_model
+from paths import CHECKPOINT_PATH, OUTPUTS_DIR
 
 
 def evaluate(
-    checkpoint="models/chest_classifier.pt",
+    checkpoint=CHECKPOINT_PATH,
     csv_path=r"D:\Datasets\nih\sample_labels.csv",
     image_dir=r"D:\Datasets\nih\sample\images",
     threshold=0.5,
     val_split=0.15,
-    out_csv="outputs/evaluation_report.csv",
+    out_csv=None,
 ):
-    ckpt = torch.load(checkpoint, map_location="cpu")
+    ckpt = torch.load(checkpoint, map_location="cpu", weights_only=False)
     conditions = ckpt["conditions"]
     model = build_model(num_classes=len(conditions))
     model.load_state_dict(ckpt["model_state"])
     model.eval()
+
+    if out_csv is None:
+        import os
+        out_csv = os.path.join(OUTPUTS_DIR, "evaluation_report.csv")
 
     full_ds = ChestXrayDataset(csv_path, image_dir, transform=eval_transform, conditions=conditions)
 
@@ -80,7 +85,7 @@ def evaluate(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--checkpoint", default="models/chest_classifier.pt")
+    parser.add_argument("--checkpoint", default=CHECKPOINT_PATH)
     parser.add_argument("--csv", default=r"D:\Datasets\nih\sample_labels.csv")
     parser.add_argument("--images", default=r"D:\Datasets\nih\sample\images")
     parser.add_argument("--threshold", type=float, default=0.5)

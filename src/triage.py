@@ -51,6 +51,24 @@ def assess(condition, confidence):
     }
 
 
+def assess_multiple(flagged_conditions):
+    """
+    Combines triage across multiple flagged conditions by taking the
+    single most urgent result -- a patient with several findings should
+    be triaged by whichever finding is most severe, not averaged down.
+    flagged_conditions: list of (condition_name, confidence) tuples.
+    """
+    if not flagged_conditions:
+        return assess("No Finding", 1.0)
+
+    worst = None
+    for cond, conf in flagged_conditions:
+        result = assess(cond, conf)
+        if worst is None or result["severity_score"] > worst["severity_score"]:
+            worst = result
+    return worst
+
+
 if __name__ == "__main__":
     print(assess("Pneumonia", 0.81))
     print(assess("Pneumonia", 0.4))

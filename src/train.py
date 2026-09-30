@@ -20,6 +20,7 @@ from tqdm import tqdm
 
 from dataset import ChestXrayDataset, CONDITIONS, train_transform, eval_transform
 from model import build_model
+from paths import CHECKPOINT_PATH
 
 # Use all available CPU cores -- default PyTorch CPU threading is often
 # conservative, and this can meaningfully speed up training.
@@ -72,7 +73,7 @@ def train(
     batch_size=16,
     lr=1e-4,
     val_split=0.15,
-    out_path="models/chest_classifier.pt",
+    out_path=CHECKPOINT_PATH,
     limit=None,
 ):
     full_train_ds = ChestXrayDataset(csv_path, image_dir, transform=train_transform)
@@ -134,7 +135,7 @@ def train(
         )
 
         if metrics["f1"] > best_f1:
-            best_f1 = metrics["f1"]
+            best_f1 = float(metrics["f1"])
             best_state = {k: v.clone() for k, v in model.state_dict().items()}
             print(f"  -> new best (val_f1={best_f1:.3f}), checkpoint updated")
 
@@ -149,7 +150,7 @@ if __name__ == "__main__":
     parser.add_argument("--images", default=r"D:\Datasets\nih\sample\images")
     parser.add_argument("--epochs", type=int, default=8)
     parser.add_argument("--batch_size", type=int, default=16)
-    parser.add_argument("--out", default="models/chest_classifier.pt")
+    parser.add_argument("--out", default=CHECKPOINT_PATH)
     parser.add_argument(
         "--limit", type=int, default=None,
         help="Smoke test: only use this many rows (e.g. --limit 40) to quickly "
