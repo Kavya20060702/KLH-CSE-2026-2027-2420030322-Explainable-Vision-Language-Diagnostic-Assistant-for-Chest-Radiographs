@@ -1,9 +1,14 @@
 """
-Explainability for the ViT-B/32 classifier via attention visualization.
+Explainability for the ViT classifier via attention visualization.
 Rather than adapting CNN-style Grad-CAM to a transformer, this extracts
 the CLS token's attention over patch tokens -- the standard way ViT
 models are visualized, and more robust than gradient-based attribution
-given this model's mostly-frozen backbone (see GradCAM class docstring).
+on a lightly fine-tuned (or, now, fully fine-tuned but very deep)
+transformer backbone.
+
+Grid size is computed dynamically from the actual attention tensor shape
+(see `generate()`), so this works unchanged for both ViT-B/32 (49
+patches, 7x7 grid) and the deployed ViT-B/16 (196 patches, 14x14 grid).
 """
 
 import argparse
@@ -22,19 +27,17 @@ from paths import CHECKPOINT_PATH, OUTPUTS_DIR
 
 class GradCAM:
     """
-    Attention-based explainability for ViT. Rather than adapting
-    gradient-based Grad-CAM (designed for CNN feature maps) to a
-    transformer, this extracts the CLS token's attention distribution
-    over patch tokens from the last transformer block -- the standard
-    way Vision Transformers are visualized in the literature, since the
-    CLS token is exactly what the classifier head reads to make its
+    Attention-based explainability for ViT. Extracts the CLS token's
+    attention distribution over patch tokens from the last transformer
+    block -- the standard way Vision Transformers are visualized, since
+    the CLS token is exactly what the classifier head reads to make its
     prediction. This also sidesteps a real failure mode observed with
-    gradient-based Grad-CAM on this model: with only 2 of 12 transformer
-    blocks fine-tuned, patch-token representations in the final block can
-    collapse to near-identical values ("token homogenization"), leaving
-    gradient-weighted activations with almost no spatial variation to
-    visualize. Attention weights, being a normalized probability
-    distribution over patches, don't suffer the same collapse.
+    gradient-based Grad-CAM on this model family: in a lightly
+    fine-tuned transformer, patch-token representations in the final
+    block can collapse to near-identical values ("token homogenization"),
+    leaving gradient-weighted activations with almost no spatial
+    variation to visualize. Attention weights, being a normalized
+    probability distribution over patches, don't suffer the same collapse.
     """
 
     def __init__(self, model, block_idx=-1):
@@ -116,8 +119,6 @@ def region_description(cam):
     h, w = cam.shape
     y, x = np.unravel_index(np.argmax(cam), cam.shape)
     vertical = "upper" if y < h / 2 else "lower"
-    # Note: X-rays are typically displayed with patient's left on the viewer's
-    # right -- adjust this mapping if your dataset convention differs.
     horizontal = "right" if x < w / 2 else "left"
     return f"{vertical} {horizontal} lung field"
 

@@ -1,14 +1,13 @@
 """
-Dataset loader for the NIH ChestX-ray sample set.
+Dataset loader for NIH ChestX-ray data.
 
-Expects:
-  data/nih_sample/images/*.png (or .jpg)
-  data/nih_sample/labels.csv with columns:
-      Image Index, Finding Labels
-  where Finding Labels is a pipe-separated string like
-  "Cardiomegaly|Effusion" or "No Finding".
-
-Adjust CONDITIONS below to match the classes you decide to target.
+CONDITIONS matches exactly the class order used in kaggle/train_vit_kaggle.py
+(["No Finding"] + 14 disease labels), so a freshly-constructed model's
+classifier head lines up with the deployed checkpoint's weights. Note:
+inference.py actually reads the class list from the checkpoint itself
+(ckpt["conditions"]) for safety, but this local copy is used by
+train.py/dataset.py defaults and anywhere a label list is needed without
+a loaded checkpoint.
 """
 
 import argparse
@@ -20,31 +19,18 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-# Selected based on per-class support in the NIH sample set: everything here
-# has >=140 positive examples except Pneumonia (62), which is kept despite
-# being rarer because it's central to the project's clinical narrative --
-# pos_weight-based class balancing (see train.py) helps compensate.
-# Dropped for insufficient data: Emphysema, Edema, Fibrosis, Hernia.
-CONDITIONS = [
-    "No Finding",
-    "Infiltration",
-    "Effusion",
-    "Atelectasis",
-    "Nodule",
-    "Mass",
-    "Pneumothorax",
-    "Consolidation",
-    "Pleural_Thickening",
-    "Cardiomegaly",
-    "Pneumonia",
+DISEASES = [
+    "Atelectasis", "Cardiomegaly", "Effusion", "Infiltration", "Mass",
+    "Nodule", "Pneumonia", "Pneumothorax", "Consolidation", "Edema",
+    "Emphysema", "Fibrosis", "Pleural_Thickening", "Hernia",
 ]
+CONDITIONS = ["No Finding"] + DISEASES
 
 IMAGE_SIZE = 224
 
 train_transform = transforms.Compose([
     transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
-    transforms.Grayscale(num_output_channels=3),  # chest x-rays are grayscale
-    transforms.RandomHorizontalFlip(p=0.0),  # anatomy is not left/right symmetric-safe by default; keep off unless you verify labeling convention
+    transforms.Grayscale(num_output_channels=3),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])

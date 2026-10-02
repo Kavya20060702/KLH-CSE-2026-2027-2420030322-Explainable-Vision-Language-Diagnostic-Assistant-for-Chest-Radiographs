@@ -1,10 +1,6 @@
 """
 Resolves models/ and outputs/ to the project root regardless of which
-folder a script is *run from*. Previously every script used a bare
-relative path like "models/chest_classifier.pt", which meant the actual
-file location depended on your current directory when you ran the
-command -- running things from src/ vs from the project root vs from
-app/ each pointed at a *different* folder. This fixes that permanently.
+folder a script is run from.
 """
 
 import os

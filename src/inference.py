@@ -1,7 +1,6 @@
 """
 End-to-end pipeline: X-ray image in -> marked-up image + readable report +
-urgency tier out. This is the file the Streamlit app (and your final demo)
-calls into.
+urgency tier out.
 """
 
 import argparse
@@ -20,8 +19,7 @@ from paths import CHECKPOINT_PATH, THRESHOLDS_PATH, REPORT_INDEX_PATH, OUTPUTS_D
 
 
 def load_thresholds(conditions, path=THRESHOLDS_PATH):
-    """Per-class thresholds from tune_thresholds.py, falling back to 0.5
-    for any class not covered (e.g. if the file doesn't exist yet)."""
+    """Per-class thresholds, falling back to 0.5 for any class not covered."""
     if not os.path.exists(path):
         return {c: 0.5 for c in conditions}
     with open(path) as f:
@@ -48,10 +46,6 @@ def run_pipeline(
 
     class_thresholds = load_thresholds(conditions)
 
-    # Collect EVERY abnormal condition that clears its own tuned threshold --
-    # not just the single highest-confidence one. A real X-ray can have
-    # multiple findings, and reporting only the top one silently drops
-    # real ones (as seen with the Cardiomegaly|Effusion example earlier).
     flagged = []
     for i, c in enumerate(conditions):
         if c != "No Finding" and probs[i].item() >= class_thresholds[c]:
@@ -62,7 +56,6 @@ def run_pipeline(
         primary_idx = conditions.index(flagged[0][0])
         primary_condition, primary_confidence = flagged[0]
     else:
-        # Nothing cleared threshold -- report No Finding using its own prob.
         primary_idx = conditions.index("No Finding") if "No Finding" in conditions else int(torch.argmax(probs).item())
         primary_condition = conditions[primary_idx]
         primary_confidence = probs[primary_idx].item()
@@ -80,15 +73,34 @@ def run_pipeline(
         flagged, region, triage_result, index=report_index,
     )
 
+    all_probs = {conditions[i]: probs[i].item() for i in range(len(conditions))}
+
+    clip_scores = None
+    try:
+        from clip_verify import clip_agreement
+        clip_scores = clip_agreement(image_path, conditions)
+    except Exception as e:
+        print(f"[warning] CLIP verification skipped: {e}")
+
+    blip_caption = None
+    try:
+        from blip_caption import generate_caption
+        blip_caption = generate_caption(image_path)
+    except Exception as e:
+        print(f"[warning] BLIP captioning skipped: {e}")
+
     return {
         "condition": primary_condition,
         "confidence": primary_confidence,
         "all_flagged": flagged,
+        "all_probs": all_probs,
         "region": region,
         "overlay_image": overlay,
         "contour_image": contour_image,
         "report": report_text,
         "triage": triage_result,
+        "clip_scores": clip_scores,
+        "blip_caption": blip_caption,
     }
 
 

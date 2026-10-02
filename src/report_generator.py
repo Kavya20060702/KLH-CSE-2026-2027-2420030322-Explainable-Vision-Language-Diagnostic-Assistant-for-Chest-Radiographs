@@ -1,9 +1,7 @@
 """
-Turns (predicted condition, confidence, Grad-CAM region) into a readable
-report. Tries retrieval from real OpenI report text first (if the index
-exists); falls back to a clean template if the index isn't built yet or
-nothing relevant is found. Always keep the template fallback -- it's what
-guarantees the demo works even if the retrieval index has issues.
+Turns (predicted condition, confidence, region) into a readable report.
+Tries retrieval from real OpenI report text first; falls back to a clean
+template if the index isn't built yet or nothing relevant is found.
 """
 
 import os
@@ -17,14 +15,21 @@ from paths import REPORT_INDEX_PATH
 
 
 def clean_report_text(text):
-    """
-    IU/OpenI reports use 'XXXX' as a de-identification placeholder for
-    redacted terms. Strip it out for readability in the final report.
-    """
+    """IU/OpenI reports use 'XXXX' as a de-identification placeholder."""
     text = re.sub(r"\bXXXX\b", "", text)
     text = re.sub(r"\s+", " ", text).strip()
     text = re.sub(r"\s+([.,])", r"\1", text)
     return text
+
+
+def truncate_at_sentence(text, max_chars=350):
+    if len(text) <= max_chars:
+        return text
+    truncated = text[:max_chars]
+    last_period = truncated.rfind(".")
+    if last_period > 80:
+        return truncated[: last_period + 1]
+    return truncated.rstrip() + "..."
 
 
 TEMPLATE = (
@@ -44,11 +49,12 @@ CONDITION_PHRASES = {
     "Pleural_Thickening": "pleural thickening",
     "Cardiomegaly": "cardiac silhouette enlargement (cardiomegaly)",
     "Pneumonia": "signs consistent with pneumonia",
+    "Edema": "findings consistent with pulmonary edema",
+    "Emphysema": "findings consistent with emphysema",
+    "Fibrosis": "pulmonary fibrosis",
+    "Hernia": "findings consistent with a diaphragmatic/hiatal hernia",
 }
 
-# IU/OpenI's "Problems" field uses MeSH-style terms that don't always match
-# our classifier's label names exactly (e.g. "Pleural Effusion" vs "Effusion").
-# Map each of our labels to the search terms likely to appear in that field.
 CONDITION_SYNONYMS = {
     "No Finding": ["normal"],
     "Infiltration": ["infiltrate", "infiltration", "opacity"],
@@ -61,12 +67,12 @@ CONDITION_SYNONYMS = {
     "Pleural_Thickening": ["pleural thickening", "thickening", "pleural"],
     "Cardiomegaly": ["cardiomegaly", "cardiac"],
     "Pneumonia": ["pneumonia"],
+    "Edema": ["edema", "oedema", "pulmonary edema"],
+    "Emphysema": ["emphysema", "emphysematous"],
+    "Fibrosis": ["fibrosis", "fibrotic"],
+    "Hernia": ["hernia", "hiatal"],
 }
 
-# General, non-prescriptive safety-net guidance for the wait before a
-# clinician is seen. Deliberately avoids medication names/dosages or
-# specific treatment instructions -- this is a triage aid, not a
-# treatment plan, and always pairs with the "see a doctor" triage message.
 PRECAUTIONS = {
     "No Finding": "No specific precautions needed based on this image. Continue routine health monitoring.",
     "Infiltration": "Rest and stay hydrated. Watch for fever, worsening cough, or shortness of breath. Avoid smoke or dust exposure.",
@@ -79,6 +85,10 @@ PRECAUTIONS = {
     "Pleural_Thickening": "Follow up with a clinician for further evaluation. Avoid smoke exposure in the meantime.",
     "Cardiomegaly": "Avoid strenuous exertion. Watch for leg swelling, breathlessness, or chest discomfort. Limit salty foods until evaluated.",
     "Pneumonia": "Rest, stay hydrated, and monitor temperature regularly. Seek IMMEDIATE care if breathing becomes difficult or lips/fingertips look bluish.",
+    "Edema": "Limit salt and fluid intake until evaluated. Keep the upper body elevated if breathless. Seek urgent care if breathing worsens.",
+    "Emphysema": "Avoid smoke and strenuous exertion. Seek care if breathlessness increases or you notice worsening cough.",
+    "Fibrosis": "Avoid smoke exposure. Report any new or worsening shortness of breath to your clinician promptly.",
+    "Hernia": "Avoid heavy lifting and straining. Seek urgent care if you experience severe abdominal or chest pain, or vomiting.",
 }
 
 PRECAUTION_DISCLAIMER = (
@@ -96,7 +106,6 @@ def load_index(index_path=REPORT_INDEX_PATH):
 
 
 def retrieve_similar_report(index, condition, top_k=1):
-    """Find the most similar real report mentioning this condition, if any."""
     if index is None:
         return None
     reports = index["reports"]
@@ -117,18 +126,6 @@ def retrieve_similar_report(index, condition, top_k=1):
     return matched_reports.iloc[best_idx]["text"]
 
 
-def truncate_at_sentence(text, max_chars=350):
-    """Cut retrieved report text at a sentence boundary instead of a hard
-    character cutoff, so snippets don't end mid-word/mid-clause."""
-    if len(text) <= max_chars:
-        return text
-    truncated = text[:max_chars]
-    last_period = truncated.rfind(".")
-    if last_period > 80:  # avoid cutting too short if punctuation is sparse
-        return truncated[: last_period + 1]
-    return truncated.rstrip() + "..."
-
-
 def generate_report(condition, confidence, region, urgency_note="", index=None):
     condition_phrase = CONDITION_PHRASES.get(condition, condition.lower())
     confidence_pct = round(confidence * 100, 1)
@@ -137,8 +134,6 @@ def generate_report(condition, confidence, region, urgency_note="", index=None):
     retrieved = retrieve_similar_report(index, condition) if index else None
 
     if retrieved:
-        # Ground the retrieved real report text with our own structured facts
-        # up front, so the output stays tied to this specific prediction.
         cleaned = truncate_at_sentence(clean_report_text(retrieved))
         report = (
             f"AI-assisted finding: {condition_phrase}, focused in the {region} "
@@ -162,14 +157,9 @@ def generate_report(condition, confidence, region, urgency_note="", index=None):
 
 def generate_multi_condition_report(flagged_conditions, region, triage_result, index=None):
     """
-    Builds a structured, multi-section report covering every condition that
-    cleared its threshold (not just the single highest-confidence one).
-
-    flagged_conditions: list of (condition_name, confidence) tuples, sorted
-                         by confidence descending. The first entry is treated
-                         as the primary finding (the one Grad-CAM visualized).
-    triage_result: dict from triage.assess_multiple() -- the combined,
-                   worst-case urgency across all flagged conditions.
+    Builds a structured, multi-section report covering every condition
+    that cleared its threshold (not just the single highest-confidence
+    one).
     """
     if not flagged_conditions:
         return generate_report("No Finding", 1.0, region, "", index=index)
@@ -179,8 +169,7 @@ def generate_multi_condition_report(flagged_conditions, region, triage_result, i
         phrase = CONDITION_PHRASES.get(cond, cond.lower())
         lines.append(f"- **{cond}**: {phrase} (confidence {round(conf*100, 1)}%)")
 
-    primary_cond, primary_conf = flagged_conditions[0]
-    lines.append(f"\nPrimary finding region (Grad-CAM): {region}\n")
+    lines.append(f"\nPrimary finding region (attention-based): {region}\n")
 
     lines.append("## Similar Documented Patterns\n")
     seen_precautions = []
