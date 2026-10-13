@@ -155,32 +155,66 @@ def generate_report(condition, confidence, region, urgency_note="", index=None):
     return report
 
 
-def generate_multi_condition_report(flagged_conditions, region, triage_result, index=None):
+def generate_multi_condition_report(
+    flagged_conditions, region, triage_result, index=None,
+    clip_scores=None, blip_caption=None, max_display=2,
+):
     """
-    Builds a structured, multi-section report covering every condition
-    that cleared its threshold (not just the single highest-confidence
-    one).
+    Builds a structured, multi-section report. Only the top `max_display`
+    conditions (by confidence) are shown in detail -- with a transparent
+    note naming any additional lower-confidence conditions that were also
+    flagged but not detailed -- rather than listing every condition that
+    cleared its (often fairly liberal, F1-optimal) threshold. This is a
+    display-layer decision only: triage_result must still be computed
+    upstream from the FULL flagged list (see triage.assess_multiple),
+    so a severe finding ranked 3rd by confidence still drives the urgency
+    recommendation even though it isn't detailed in the findings list.
+
+    clip_scores: dict {condition: probability} from clip_verify.clip_agreement(),
+                 or None if CLIP wasn't run / failed.
+    blip_caption: string from blip_caption.generate_caption(), or None.
     """
     if not flagged_conditions:
-        return generate_report("No Finding", 1.0, region, "", index=index)
+        base = generate_report("No Finding", 1.0, region, "", index=index)
+        return _append_cross_verification(base, None, clip_scores, blip_caption)
+
+    displayed = flagged_conditions[:max_display]
+    hidden = flagged_conditions[max_display:]
 
     lines = ["## AI-Assisted Findings\n"]
-    for cond, conf in flagged_conditions:
+    for cond, conf in displayed:
         phrase = CONDITION_PHRASES.get(cond, cond.lower())
         lines.append(f"- **{cond}**: {phrase} (confidence {round(conf*100, 1)}%)")
+
+    if hidden:
+        hidden_names = ", ".join(f"{c} ({round(conf*100, 1)}%)" for c, conf in hidden)
+        lines.append(
+            f"\n*{len(hidden)} additional condition(s) also flagged at lower "
+            f"confidence, not detailed above: {hidden_names}. All flagged "
+            f"conditions, including these, are factored into the triage "
+            f"recommendation below.*"
+        )
 
     lines.append(f"\nPrimary finding region (attention-based): {region}\n")
 
     lines.append("## Similar Documented Patterns\n")
     seen_precautions = []
-    for cond, conf in flagged_conditions:
+    for cond, conf in displayed:
         retrieved = retrieve_similar_report(index, cond) if index else None
         if retrieved:
             snippet = truncate_at_sentence(clean_report_text(retrieved), max_chars=250)
             lines.append(f"- **{cond}**: {snippet}")
+    # Precautions still cover the FULL flagged list (not just displayed) --
+    # safety information should never be trimmed for brevity, only the
+    # descriptive findings/pattern text above.
+    for cond, conf in flagged_conditions:
         precaution = PRECAUTIONS.get(cond)
         if precaution and precaution not in seen_precautions:
             seen_precautions.append(precaution)
+
+    primary_condition = flagged_conditions[0][0]
+    cross_verify_lines = _cross_verification_lines(primary_condition, clip_scores, blip_caption)
+    lines.extend(cross_verify_lines)
 
     lines.append(f"\n## Triage\n{triage_result['tier']} -- {triage_result['message']}\n")
 
@@ -190,6 +224,53 @@ def generate_multi_condition_report(flagged_conditions, region, triage_result, i
     lines.append(f"\n{PRECAUTION_DISCLAIMER}")
 
     return "\n".join(lines)
+
+
+def _cross_verification_lines(primary_condition, clip_scores, blip_caption):
+    """
+    Builds the '## Cross-Verification' section: an independent CLIP
+    zero-shot opinion (agrees/disagrees with the ViT prediction) plus a
+    general BLIP v1 caption, each clearly labeled so the reader
+    understands these are supplementary signals, not the primary
+    diagnosis (that's the ViT classifier + retrieval report above).
+    """
+    lines = []
+    if not clip_scores and not blip_caption:
+        return lines
+
+    lines.append("\n## Cross-Verification (Independent Models)\n")
+
+    if clip_scores:
+        clip_top_cond, clip_top_prob = max(clip_scores.items(), key=lambda kv: kv[1])
+        agrees = clip_top_cond == primary_condition
+        agreement_label = "agrees with" if agrees else "does NOT agree with"
+        lines.append(
+            f"- **CLIP (zero-shot, independent model)** {agreement_label} the primary "
+            f"finding. CLIP's top match: **{clip_top_cond}** "
+            f"({round(clip_top_prob * 100, 1)}%)."
+        )
+        if not agrees:
+            lines.append(
+                "  Disagreement between models does not necessarily mean either is "
+                "wrong -- it is a signal to weigh this case more carefully."
+            )
+
+    if blip_caption:
+        lines.append(
+            f"- **BLIP v1 general image caption** (not medical-specific, pretrained "
+            f"on natural photos, supplementary only): \"{blip_caption}\""
+        )
+
+    return lines
+
+
+def _append_cross_verification(report_text, primary_condition, clip_scores, blip_caption):
+    """Used for the No-Finding fallback path, which otherwise bypasses
+    the multi-condition builder above."""
+    extra = _cross_verification_lines(primary_condition, clip_scores, blip_caption)
+    if not extra:
+        return report_text
+    return report_text + "\n" + "\n".join(extra)
 
 
 if __name__ == "__main__":

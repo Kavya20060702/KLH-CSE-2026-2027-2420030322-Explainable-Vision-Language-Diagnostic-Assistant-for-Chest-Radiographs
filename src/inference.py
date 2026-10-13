@@ -68,13 +68,9 @@ def run_pipeline(
 
     triage_result = assess_multiple(flagged)
 
-    report_index = load_index(report_index_path)
-    report_text = generate_multi_condition_report(
-        flagged, region, triage_result, index=report_index,
-    )
-
-    all_probs = {conditions[i]: probs[i].item() for i in range(len(conditions))}
-
+    # Run CLIP + BLIP BEFORE building the report text, so both can be
+    # woven directly into the report's Cross-Verification section rather
+    # than only shown separately in the app/PDF.
     clip_scores = None
     try:
         from clip_verify import clip_agreement
@@ -88,6 +84,14 @@ def run_pipeline(
         blip_caption = generate_caption(image_path)
     except Exception as e:
         print(f"[warning] BLIP captioning skipped: {e}")
+
+    report_index = load_index(report_index_path)
+    report_text = generate_multi_condition_report(
+        flagged, region, triage_result, index=report_index,
+        clip_scores=clip_scores, blip_caption=blip_caption,
+    )
+
+    all_probs = {conditions[i]: probs[i].item() for i in range(len(conditions))}
 
     return {
         "condition": primary_condition,

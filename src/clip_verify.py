@@ -1,6 +1,11 @@
 """
 Zero-shot CLIP verification. Independently checks the ViT classifier's
-prediction using a different pretrained model, no fine-tuning done.
+prediction by comparing the X-ray image against short text descriptions
+of each candidate condition using CLIP's joint image-text embedding
+space. This is a genuinely separate model with different pretraining
+than the ViT classifier -- no fine-tuning is done here (CLIP is used
+purely zero-shot), so it acts as an independent cross-check rather than
+a second trained classifier.
 """
 
 import torch
