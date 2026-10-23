@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Model checkpoints
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+
+# Local datasets and generated files
+data/
+outputs/
+src/outputs/
+results/
+reports/
+
+# Local secrets
+.env
+.streamlit/secrets.toml
+
+# Temporary files
+*.tmp
+.DS_Store
