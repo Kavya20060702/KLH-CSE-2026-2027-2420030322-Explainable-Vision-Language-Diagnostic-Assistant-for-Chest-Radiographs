@@ -10,7 +10,7 @@ The framework integrates **ViT-B/16, CLIP, BLIP v1, attention-based visual expla
 
 ---
 
-## 📌 Table of Contents
+## Table of Contents
 
 - [Overview](#-overview)
 - [Research Problem](#-research-problem)
@@ -40,7 +40,7 @@ The framework integrates **ViT-B/16, CLIP, BLIP v1, attention-based visual expla
 
 ---
 
-## 🔍 Overview
+## Overview
 
 Access to specialist radiological interpretation remains a challenge in many rural and low-resource healthcare environments. Even where chest X-ray equipment is available, delays in expert interpretation can affect the speed of preliminary clinical assessment.
 
@@ -60,7 +60,7 @@ The principal research contribution is the **integration and orchestration of co
 
 The framework is intended to support—not replace—professional interpretation and clinical decision-making.
 
-## 🎯 Research Problem
+## Research Problem
 
 Conventional chest X-ray classification systems primarily focus on predicting abnormalities from images. Although useful for screening research, a standalone prediction may not provide the contextual information, visual evidence, uncertainty handling, and reporting support needed for practical clinical workflows.
 
@@ -75,7 +75,7 @@ Existing approaches may also face challenges involving:
 
 This project investigates whether integrating classification, explainability, vision-language analysis, retrieval, and deterministic triage can provide a more transparent preliminary assessment workflow.
 
-## 🎯 Research Objectives
+## Research Objectives
 
 - Develop a multi-label chest radiograph classification pipeline using a Vision Transformer.
 - Integrate visual explanations to improve the interpretability of model predictions.
@@ -88,7 +88,7 @@ This project investigates whether integrating classification, explainability, vi
 - Investigate local CPU inference and offline-capable deployment.
 - Preserve human oversight and clearly communicate the limitations of AI-generated outputs.
 
-## ✨ Key Features
+## Key Features
 
 | Feature | Purpose |
 |---|---|
@@ -106,7 +106,7 @@ This project investigates whether integrating classification, explainability, vi
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 The proposed framework follows a modular architecture in which individual components have distinct responsibilities.
 
@@ -130,7 +130,7 @@ The outputs of the individual models are not assumed to be equivalent or interch
 ## Comparatative Analysis
 <img width="1376" height="768" alt="image" src="https://github.com/user-attachments/assets/5a8c9345-124c-47c5-9823-c4b89f27a256" />
 
-## 🔄 End-to-End Workflow
+## End-to-End Workflow
 
 ```text
 Chest Radiograph Upload
@@ -184,7 +184,7 @@ Visual Explanation          and Probabilities
 
 *Figure 2. End-to-end workflow. The final clinical decision remains the responsibility of a qualified healthcare professional.*
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 | Category | Technology |
 |---|---|
@@ -236,7 +236,7 @@ The retrieval module uses this corpus to identify relevant clinical-text example
 
 Dataset access and usage must comply with the relevant dataset terms, access conditions, and licensing requirements. The actual number of usable records may depend on preprocessing and missing or invalid entries.
 
-## 🧠 Model Architecture and Responsibilities
+## Model Architecture and Responsibilities
 
 The framework combines complementary components rather than treating them as competing versions of the same model.
 
@@ -672,13 +672,13 @@ Open the local URL printed by Streamlit in your browser.
 8. Export the report as a PDF, if the export functionality is available and operational.
 
 All results should be treated as AI-generated decision-support information pending qualified human review.
-## 🎥 Project Demo
+## Project Demo
 
 Watch the demonstration of the **Explainable Vision-Language Diagnostic Assistant for Chest Radiographs**.
 
 https://github.com/user-attachments/assets/c12f6525-da72-4760-826e-fff92f95edae
 
-## 🖼️ Example Outputs
+## Example Outputs
 
 Add real screenshots from your running application to the following locations, or replace these paths with the actual image URLs.
 
@@ -802,11 +802,11 @@ Planned or possible next steps, none of which is done yet:
 
 **Reference note:** Include only sources that are relevant to the methods or datasets actually discussed in the paper. Confirm bibliographic details and add the exact citations for any additional retrieval, dataset, or model components implemented in the final code.
 
-## 📄 License
+## License
 
-No license has been specified yet. Add a `LICENSE` file before describing the repository as open source. Ensure that any dataset, pretrained model, and third-party assets are used according to their respective terms.
+This project is licensed under the **Apache License 2.0** - see the [LICENSE](LICENSE) file for details.
 
-## ⚖️ Disclaimer
+## Disclaimer
 
 This repository is intended for academic research and educational demonstration. It has not been established as a clinically validated medical device. The generated predictions, captions, retrieved text, visualizations, reports, and triage categories may be incorrect or incomplete.
 
@@ -814,7 +814,7 @@ Do not use this prototype as the sole basis for diagnosis, treatment, emergency 
 
 ---
 
-### 🚀 Project Summary
+### Project Summary
 
 **From Image to Insight:** This project explores how visual classification, image-text similarity, image captioning, attention visualization, report retrieval, and deterministic triage can be orchestrated into a single explainable multimodal framework for preliminary chest radiograph assessment.
 
