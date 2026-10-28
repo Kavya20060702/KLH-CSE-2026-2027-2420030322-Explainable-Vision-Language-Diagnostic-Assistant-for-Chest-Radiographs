@@ -344,8 +344,42 @@ The reporting module organizes available outputs into a preliminary clinical-sup
 The report should distinguish model predictions from generated descriptions, retrieved material, and deterministic rules.
 
 ---
+## Classifier (ViT-B/16, 15 labels)
 
-## 📊 Evaluation Results
+Evaluated on the **official NIH ChestX-ray14 test split (25,596 images)**, which was never used for training or threshold tuning.
+
+| Metric | Value |
+|---|---|
+| Mean AUROC, 15 labels | **0.788** |
+| Mean AUROC, the 14 diseases only (comparable to CheXNet's setup) | **0.793** |
+| Macro precision / recall / F1 at the tuned thresholds | 0.295 / 0.392 / 0.327 |
+
+AUROC is the headline metric. It does not depend on a threshold and is not distorted by class imbalance. The accuracy figures in the table below are inflated by the many easy negatives (for example Hernia: 0.994 accuracy but 0.108 F1), so do not read them as overall quality.
+
+| Condition | AUROC | Accuracy | Precision | Recall | F1 | Test support |
+|---|---|---|---|---|---|---|
+| No Finding | 0.728 | 0.667 | 0.555 | 0.680 | 0.611 | 9,861 |
+| Atelectasis | 0.761 | 0.799 | 0.314 | 0.483 | 0.381 | 3,279 |
+| Cardiomegaly | 0.889 | 0.953 | 0.428 | 0.395 | 0.411 | 1,069 |
+| Effusion | 0.821 | 0.814 | 0.489 | 0.529 | 0.508 | 4,658 |
+| Infiltration | 0.699 | 0.596 | 0.340 | 0.739 | 0.466 | 6,112 |
+| Mass | 0.797 | 0.917 | 0.376 | 0.327 | 0.350 | 1,748 |
+| Nodule | 0.720 | 0.898 | 0.239 | 0.280 | 0.258 | 1,623 |
+| Pneumonia | 0.713 | 0.943 | 0.066 | 0.123 | 0.086 | 555 |
+| Pneumothorax | 0.844 | 0.875 | 0.416 | 0.494 | 0.452 | 2,665 |
+| Consolidation | 0.751 | 0.799 | 0.169 | 0.468 | 0.248 | 1,815 |
+| Edema | 0.847 | 0.916 | 0.186 | 0.397 | 0.254 | 925 |
+| Emphysema | 0.870 | 0.948 | 0.393 | 0.409 | 0.401 | 1,093 |
+| Fibrosis | 0.814 | 0.974 | 0.180 | 0.145 | 0.161 | 435 |
+| Pleural Thickening | 0.768 | 0.895 | 0.156 | 0.305 | 0.206 | 1,143 |
+| Hernia | 0.803 | 0.994 | 0.111 | 0.105 | 0.108 | 86 |
+| **Macro average** | **0.788** | **0.866** | **0.295** | **0.392** | **0.327** | |
+
+Precision, recall and F1 use the per-class thresholds in `models/thresholds.json`, chosen on the validation split to maximise F1. Accuracy here is label-based accuracy averaged over the 15 labels. It is not the much stricter "all 15 labels correct" accuracy.
+
+**Reading these numbers honestly:** the model ranks cases reasonably (AUROC) but is imprecise at a fixed threshold, especially for rare conditions. Pneumonia (F1 0.086) is the weakest. Treat flagged findings as prompts for a clinician to look, not as conclusions.
+
+##  Evaluation Results
 
 The following values are the project's reported ViT-B/16 evaluation results. They describe the primary classifier and should not be presented as evidence that the complete multimodal framework improves clinical outcomes.
 
@@ -427,7 +461,7 @@ The ablation study will investigate the individual contribution of each componen
 
 Ablations should use consistent test data and clearly specify which components are disabled. Explainability and retrieval components may not change the classifier's AUROC when they do not feed information back into the classifier; their value should be measured using suitable component-specific outcomes.
 
-## 🔎 Explainability and Clinical Safety
+##  Explainability and Clinical Safety
 
 The framework aims to improve transparency by presenting several types of evidence separately.
 
@@ -442,7 +476,7 @@ These evidence types are not interchangeable. Their agreement does not guarantee
 
 Before clinical deployment, the system requires external validation, evaluation across representative populations and imaging equipment, calibration assessment, bias analysis, and clinical workflow evaluation. Triage rules must be reviewed by appropriate clinical professionals.
 
-## 📁 Repository Structure
+##  Repository Structure
 
 The following structure reflects the project's current described organization. Adjust the tree to match the actual repository before publishing.
 
@@ -496,7 +530,7 @@ xray-assistant/
 
 Model checkpoints, datasets, cached indexes, and generated outputs may be excluded from Git because of size, access restrictions, or privacy considerations. If required artifacts are not included in the repository, document how to obtain or generate them.
 
-## ⚙️ Installation
+##  Installation
 
 ### Prerequisites
 
@@ -538,7 +572,7 @@ pip install -r requirements.txt
 
 Use the Python version and dependency versions tested by the project. If installation fails, check the compatibility of PyTorch, Transformers, Streamlit, and the other listed packages.
 
-## 📦 Model Setup
+##  Model Setup
 
 The application requires the trained classifier checkpoint, its configured thresholds, the selected CLIP and BLIP model weights, and the report retrieval index.
 
@@ -567,7 +601,7 @@ Verify the script's actual location before running this command. If the project 
 
 Initial downloads may require internet access. Once the required weights and artifacts have been cached locally, inference may be possible without an internet connection, provided the code is configured to load them locally.
 
-## 🏋️ Training
+## Training
 
 The primary reported classifier was fine-tuned using the NIH ChestX-ray14 dataset in a Kaggle GPU environment.
 
@@ -594,7 +628,7 @@ Run the script according to the notebook environment and its documented configur
 
 **Reproducibility note:** Do not use a different training script or checkpoint and assume it reproduces the reported results. The architecture, data split, preprocessing, training configuration, and evaluation code must match the experiment being reported.
 
-## 🔎 Building the Report Retrieval Index
+## Building the Report Retrieval Index
 
 The retrieval index is built from the available IU/OpenI report data.
 
@@ -616,7 +650,7 @@ Replace the example paths with the actual dataset paths. Confirm the script's ar
 
 The resulting index must be saved in the location configured by the application.
 
-## 🚀 Running the Application
+##  Running the Application
 
 After installing dependencies and placing all required model and index artifacts in their expected locations, launch the Streamlit interface:
 
@@ -675,7 +709,7 @@ Add real screenshots from your running application to the following locations, o
 
 Use only appropriately de-identified, legally usable example images and reports. Do not upload identifiable patient information to a public repository.
 
-## 💻 Deployment and Offline Capability
+## Deployment and Offline Capability
 
 The framework investigates local inference for resource-constrained environments.
 
@@ -692,32 +726,32 @@ Potential deployment considerations include:
 
 CPU support does not guarantee acceptable processing speed on every device. Runtime and memory use should be measured on representative low-resource hardware before making deployment claims.
 
-## ⚠️ Limitations
+## Limitations
 
-1. **Dataset limitations:** NIH ChestX-ray14 contains noisy report-derived labels and may not represent all patient populations or clinical environments.
-2. **Generalization:** Performance on the selected test split does not establish generalization to other hospitals, imaging equipment, or populations.
-3. **Classification uncertainty:** Model scores may be poorly calibrated and can produce false-positive or false-negative predictions.
-4. **Attention visualization:** Highlighted regions do not establish causal explanations or diagnostic correctness.
-5. **CLIP limitations:** Image-text similarity is a semantic comparison, not a validated diagnostic probability.
-6. **Captioning limitations:** BLIP v1 may produce incomplete or inaccurate medical descriptions.
-7. **Retrieval limitations:** Lexically similar reports may be clinically irrelevant or contain findings that do not apply to the current patient.
-8. **Triage limitations:** Deterministic rules require appropriate clinical specification and validation before being used to guide real patient care.
-9. **Clinical validation:** The reported classifier results do not establish the safety or effectiveness of the integrated framework in clinical practice.
-10. **Resource constraints:** Model size, memory consumption, and CPU latency may limit use on lower-specification devices.
+- **Class imbalance:** rare conditions have few training examples, so precision is low (macro F1 0.327; Pneumonia F1 0.086). Expect false alarms and misses.
+- **Calibration not evaluated:** displayed confidence values are raw outputs. The low-confidence triage rule depends on them.
+- **Single-source data:** NIH ChestX-ray14 comes from one health system, and the labels were extracted from reports by text mining, not read from the images by radiologists. No external validation has been done.
+- **Attention is not causation:** the heatmap can land on markers or artefacts, and the region label is a coarse quadrant ("upper left lung field").
+- **Retrieved report text** describes a similar documented case. It is not a description of the uploaded image.
+- **CLIP is weak on X-rays,** and **BLIP v1 captions are generic.** Both are supplementary.
+- **Triage severities are unvalidated** design choices, and precautions are general, non-prescriptive advice.
+- **Single-user design:** the app saves each upload to one shared filename, so simultaneous users could overwrite each other. Do not expose it publicly as a multi-user service.
+- **CPU speed:** BLIP captioning in particular can take several seconds per image on a CPU.
 
-## 🔮 Future Work
+---
 
-- Conduct external evaluation using independent datasets and clinical sites.
-- Evaluate calibration and uncertainty estimation.
-- Assess classification performance across demographic and acquisition subgroups where appropriate data are available.
-- Improve retrieval using clinically meaningful ranking and relevance evaluation.
-- Evaluate generated descriptions and reports with qualified radiologists.
-- Validate triage thresholds against an appropriate clinical reference standard.
-- Measure component-wise and end-to-end inference latency.
-- Test the complete offline workflow on representative low-resource devices.
-- Conduct usability studies with intended healthcare users.
-- Investigate privacy-preserving deployment and responsible data governance.
-- Evaluate whether multimodal integration improves usefulness, transparency, or workflow efficiency over the classifier-only baseline.
+## Roadmap
+
+Planned or possible next steps, none of which is done yet:
+
+- Evaluate calibration (Brier score, expected calibration error, reliability diagrams).
+- Test on an external dataset such as IU/OpenI.
+- Swap generic CLIP for a medically pretrained model such as BiomedCLIP.
+- Parameter-efficient (LoRA) fine-tuning of a larger vision-language model on cloud GPU for report generation.
+- Re-tune thresholds or calibrate probabilities, then revisit the low-confidence rule.
+- Unique upload filenames for safe multi-user hosting.
+
+---
 
 ## 👥 Team Members
 
